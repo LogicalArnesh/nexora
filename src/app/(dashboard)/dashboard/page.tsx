@@ -7,6 +7,51 @@ export const metadata = {
   title: "Dashboard",
 };
 
+const TOOLS = [
+  {
+    title: "URL Shortener",
+    href: "/tools/url-shortener",
+    cat: "Utilities",
+    desc: "Short links, aliases, click tracking",
+    ready: true,
+  },
+  {
+    title: "Notes",
+    href: "/tools/notes",
+    cat: "Productivity",
+    desc: "Create, pin, and manage notes",
+    ready: true,
+  },
+  {
+    title: "Weather",
+    href: "/tools/weather",
+    cat: "Utilities",
+    desc: "Live weather & forecasts",
+    ready: false,
+  },
+  {
+    title: "AI Chat",
+    href: "/tools/ai-chat",
+    cat: "AI",
+    desc: "Streaming AI conversations",
+    ready: false,
+  },
+  {
+    title: "Projects",
+    href: "/tools/projects",
+    cat: "Management",
+    desc: "Kanban boards & tasks",
+    ready: false,
+  },
+  {
+    title: "Explore all",
+    href: "/explore",
+    cat: "Marketplace",
+    desc: "Browse every Nexora tool",
+    ready: false,
+  },
+];
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const {
@@ -56,31 +101,34 @@ export default async function DashboardPage() {
             Welcome back, {name}
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Your intelligent workspace is ready. Tools and marketplace come next.
+            Your intelligent workspace. Open a tool to get started.
           </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            { title: "URL Shortener", href: "/tools/url-shortener", cat: "Utilities" },
-            { title: "Weather", href: "/tools/weather", cat: "Utilities" },
-            { title: "AI Chat", href: "/tools/ai-chat", cat: "AI" },
-            { title: "Notes", href: "/tools/notes", cat: "Productivity" },
-            { title: "Projects", href: "/tools/projects", cat: "Management" },
-            { title: "Explore all", href: "/explore", cat: "Marketplace" },
-          ].map((item) => (
-            <div
+          {TOOLS.map((item) => (
+            <Link
               key={item.title}
-              className="card-hover rounded-2xl border border-border bg-card p-5"
+              href={item.ready ? item.href : "#"}
+              className={`card-hover rounded-2xl border border-border bg-card p-5 block ${
+                !item.ready ? "opacity-60 pointer-events-none" : ""
+              }`}
             >
-              <div className="text-xs font-medium text-primary mb-2">
-                {item.cat}
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs font-medium text-primary">{item.cat}</div>
+                {item.ready ? (
+                  <span className="text-[10px] uppercase tracking-wide text-primary">
+                    Live
+                  </span>
+                ) : (
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Soon
+                  </span>
+                )}
               </div>
               <h2 className="font-medium">{item.title}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Coming in the next phases — structure is ready.
-              </p>
-            </div>
+              <p className="mt-1 text-sm text-muted-foreground">{item.desc}</p>
+            </Link>
           ))}
         </div>
       </main>
