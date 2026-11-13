@@ -1,0 +1,220 @@
+@import "tailwindcss";
+
+/* =============================================================================
+   NEXORA Design System
+   Dark charcoal + electric violet + subtle blue gradients
+   Premium · Modern · Minimal · Futuristic
+   ============================================================================= */
+
+:root {
+  /* Light theme (default fallback) */
+  --background: #f8f7fc;
+  --foreground: #0f0e17;
+  --card: #ffffff;
+  --card-foreground: #0f0e17;
+  --popover: #ffffff;
+  --popover-foreground: #0f0e17;
+  --primary: #7c3aed; /* electric violet */
+  --primary-foreground: #faf5ff;
+  --secondary: #e9e5f5;
+  --secondary-foreground: #1e1b2e;
+  --muted: #f1eff8;
+  --muted-foreground: #6b6680;
+  --accent: #3b82f6; /* subtle blue */
+  --accent-foreground: #eff6ff;
+  --destructive: #ef4444;
+  --destructive-foreground: #fef2f2;
+  --border: #e4e0f0;
+  --input: #e4e0f0;
+  --ring: #7c3aed;
+  --radius: 0.75rem;
+
+  /* Surfaces */
+  --surface-1: #ffffff;
+  --surface-2: #f8f7fc;
+  --surface-3: #f1eff8;
+
+  /* Brand */
+  --nexora-violet: #7c3aed;
+  --nexora-violet-glow: #a78bfa;
+  --nexora-blue: #3b82f6;
+  --nexora-charcoal: #0f0e17;
+}
+
+.dark {
+  --background: #0c0b12; /* deep charcoal */
+  --foreground: #f4f2ff;
+  --card: #14131c;
+  --card-foreground: #f4f2ff;
+  --popover: #14131c;
+  --popover-foreground: #f4f2ff;
+  --primary: #8b5cf6;
+  --primary-foreground: #0c0b12;
+  --secondary: #1e1b2e;
+  --secondary-foreground: #e9e5f5;
+  --muted: #1a1825;
+  --muted-foreground: #9b95b0;
+  --accent: #3b82f6;
+  --accent-foreground: #eff6ff;
+  --destructive: #f87171;
+  --destructive-foreground: #1f0a0a;
+  --border: #2a2740;
+  --input: #2a2740;
+  --ring: #8b5cf6;
+
+  --surface-1: #14131c;
+  --surface-2: #1a1825;
+  --surface-3: #222033;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Base */
+* {
+  border-color: var(--border);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle gradient backgrounds */
+.bg-nexora-gradient {
+  background: radial-gradient(
+      ellipse 80% 50% at 50% -20%,
+      rgba(124, 58, 237, 0.18),
+      transparent
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 100% 0%,
+      rgba(59, 130, 246, 0.12),
+      transparent
+    ),
+    var(--background);
+}
+
+.dark .bg-nexora-gradient {
+  background: radial-gradient(
+      ellipse 80% 50% at 50% -20%,
+      rgba(139, 92, 246, 0.22),
+      transparent
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 100% 0%,
+      rgba(59, 130, 246, 0.1),
+      transparent
+    ),
+    var(--background);
+}
+
+/* Glass surface (use sparingly) */
+.glass {
+  background: rgba(20, 19, 28, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(139, 92, 246, 0.12);
+}
+
+.dark .glass {
+  background: rgba(20, 19, 28, 0.7);
+  border-color: rgba(139, 92, 246, 0.15);
+}
+
+/* Card hover elevation */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px -12px rgba(124, 58, 237, 0.25);
+  border-color: rgba(139, 92, 246, 0.35);
+}
+
+/* Focus ring */
+.focus-ring {
+  outline: none;
+}
+
+.focus-ring:focus-visible {
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+}
+
+/* Scrollbar (subtle) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--muted-foreground);
+  border-radius: 9999px;
+  opacity: 0.4;
+}
+::-webkit-scrollbar-thumb:hover {
+  opacity: 0.7;
+}
+
+/* Selection */
+::selection {
+  background: rgba(124, 58, 237, 0.35);
+  color: inherit;
+}
+
+/* Skeleton pulse */
+@keyframes nexora-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+.animate-nexora-pulse {
+  animation: nexora-pulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 45%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
