@@ -33,7 +33,7 @@ export default async function NotesPage() {
         createAction={createNote}
         updateAction={updateNote}
         deleteAction={deleteNote}
-        togglePin={togglePinNote}
+        pinAction={togglePinNote}
       />
     </AppShell>
   );
