@@ -1,8 +1,3 @@
-/**
- * Multi-provider AI layer for Nexora
- * Supports: xAI (Grok), OpenAI (ChatGPT), Google Gemini
- */
-
 export type AIProviderId = "xai" | "openai" | "gemini";
 
 export type AIProviderConfig = {
@@ -19,7 +14,7 @@ export function getProvider(id: AIProviderId): AIProviderConfig {
     xai: {
       id: "xai",
       label: "Grok (xAI)",
-      model: process.env.XAI_MODEL || "grok-2-latest",
+      model: process.env.XAI_MODEL || "grok-3-mini",
       baseUrl: process.env.XAI_BASE_URL || "https://api.x.ai/v1",
       apiKey: process.env.XAI_API_KEY,
       kind: "openai-compatible",
@@ -47,12 +42,13 @@ export function getProvider(id: AIProviderId): AIProviderConfig {
 }
 
 export function listConfiguredProviders(): AIProviderId[] {
-  const ids: AIProviderId[] = ["xai", "openai", "gemini"];
-  return ids.filter((id) => Boolean(getProvider(id).apiKey));
+  return (["xai", "openai", "gemini"] as AIProviderId[]).filter((id) =>
+    Boolean(getProvider(id).apiKey)
+  );
 }
 
 export function resolveProvider(preferred?: string): AIProviderConfig {
-  const id = (preferred as AIProviderId) || undefined;
+  const id = preferred as AIProviderId | undefined;
   if (id && getProvider(id).apiKey) return getProvider(id);
   for (const fallback of ["xai", "openai", "gemini"] as AIProviderId[]) {
     const p = getProvider(fallback);
@@ -70,7 +66,7 @@ export async function chatCompletion(
 ): Promise<string> {
   if (!provider.apiKey) {
     throw new Error(
-      `${provider.label} is not configured. Add the API key in environment variables.`
+      `${provider.label} is not configured. Add the API key in Vercel environment variables and redeploy.`
     );
   }
   if (provider.kind === "gemini") {
