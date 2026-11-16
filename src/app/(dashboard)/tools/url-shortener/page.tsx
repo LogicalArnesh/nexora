@@ -1,8 +1,13 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { createShortUrl, deleteShortUrl, toggleShortUrl } from "@/lib/tools/url-shortener";
+import {
+  createShortUrl,
+  deleteShortUrl,
+  toggleShortUrl,
+} from "@/lib/tools/url-shortener";
 import { UrlShortenerClient } from "@/components/tools/url-shortener-client";
+import { AppShell } from "@/components/layout/app-shell";
+import { getAppUrl } from "@/lib/env";
 
 export const metadata = { title: "URL Shortener" };
 
@@ -19,37 +24,19 @@ export default async function UrlShortenerPage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
   return (
-    <div className="min-h-screen bg-nexora-gradient">
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
-              ← Dashboard
-            </Link>
-            <span className="text-sm font-medium">URL Shortener</span>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-5xl px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight">URL Shortener</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create short links, custom aliases, and track clicks.
-          </p>
-        </div>
-
-        <UrlShortenerClient
-          links={links || []}
-          appUrl={appUrl}
-          createAction={createShortUrl}
-          deleteAction={deleteShortUrl}
-          toggleAction={toggleShortUrl}
-        />
-      </main>
-    </div>
+    <AppShell title="Link Shortener">
+      <p className="text-sm text-muted-foreground mb-6 -mt-2">
+        Create short links, optional aliases, and track clicks. Shared links use{" "}
+        <code className="text-xs bg-muted px-1.5 py-0.5 rounded">/s/code</code>.
+      </p>
+      <UrlShortenerClient
+        links={links || []}
+        appUrl={getAppUrl()}
+        createAction={createShortUrl}
+        deleteAction={deleteShortUrl}
+        toggleAction={toggleShortUrl}
+      />
+    </AppShell>
   );
 }
