@@ -34,7 +34,7 @@ export async function GET(request: Request) {
       `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(
         city
       )}&appid=${key}&units=metric`,
-      { next: { revalidate: 600 } }
+      { next: { revalidate: 600 }, signal: AbortSignal.timeout(10000) }
     );
     if (!currentRes.ok) {
       const err = await currentRes.json().catch(() => ({}));

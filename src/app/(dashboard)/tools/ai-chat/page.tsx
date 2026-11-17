@@ -29,7 +29,7 @@ export default function AiChatPage() {
   const stepTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    fetch("/api/ai/chat")
+    fetch("/api/ai/chat", { signal: AbortSignal.timeout(12000) })
       .then((r) => r.json())
       .then((d) => setHasKeys((d.providers || []).length > 0))
       .catch(() => setHasKeys(false));
@@ -116,6 +116,7 @@ export default function AiChatPage() {
     try {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
+        signal: AbortSignal.timeout(60000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: payloadMessage,
@@ -134,8 +135,10 @@ export default function AiChatPage() {
         ...m,
         { role: "assistant", content: data.reply, meta },
       ]);
-    } catch {
-      setError("Network error. Try again.");
+    } catch (err) {
+      setError(err instanceof DOMException && err.name === "TimeoutError"
+        ? "This AI request took too long (60 seconds). Please try again with a shorter prompt."
+        : "Network error. Check your connection and try again.");
     } finally {
       stopProgress();
       setLoading(false);

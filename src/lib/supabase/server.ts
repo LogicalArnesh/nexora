@@ -14,12 +14,19 @@ type CookieToSet = {
   options?: any;
 };
 
+const fetchWithTimeout: typeof fetch = (input, init = {}) =>
+  fetch(input, {
+    ...init,
+    signal: init.signal ?? AbortSignal.timeout(15000),
+  });
+
 export async function createClient() {
   const cookieStore = await cookies();
   const url = getSupabaseUrl();
   const anon = getSupabaseAnonKey();
 
   return createServerClient(url, anon, {
+    global: { fetch: fetchWithTimeout },
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -39,6 +46,7 @@ export async function createClient() {
 
 export function createServiceClient() {
   return createSupabaseClient(getSupabaseUrl(), getSupabaseServiceKey(), {
+    global: { fetch: fetchWithTimeout },
     auth: {
       autoRefreshToken: false,
       persistSession: false,
