@@ -2,53 +2,58 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
-import { Spinner } from "@/components/ui/loading";
 
 type Msg = { role: "user" | "assistant"; content: string; meta?: string };
-type ProviderId = "openrouter" | "xai" | "openai" | "gemini";
 
-const LABELS: Record<ProviderId, string> = {
-  openrouter: "OpenRouter",
-  xai: "Grok · xAI",
-  openai: "ChatGPT · OpenAI",
-  gemini: "Gemini · Google",
-};
-
-type OrModel = { id: string; label: string };
+const THINK_STEPS = [
+  "Understanding your request…",
+  "Selecting the best model…",
+  "Running parallel reasoning…",
+  "Checking consistency…",
+  "Preparing the answer…",
+];
 
 export default function AiChatPage() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [providers, setProviders] = useState<ProviderId[]>([]);
-  const [provider, setProvider] = useState<ProviderId | "">("");
-  const [orModels, setOrModels] = useState<OrModel[]>([]);
-  const [model, setModel] = useState("");
-  const [mode, setMode] = useState<"single" | "race">("single");
+  const [hasKeys, setHasKeys] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const stepTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     fetch("/api/ai/chat")
       .then((r) => r.json())
-      .then((d) => {
-        const list = (d.providers || []) as ProviderId[];
-        setProviders(list);
-        if (list.length) setProvider(list[0]);
-        const models = (d.openrouterModels || []) as OrModel[];
-        setOrModels(models);
-        if (models[0]) setModel(models[0].id);
-      })
-      .catch(() => {})
-      .finally(() => setReady(true));
+      .then((d) => setHasKeys((d.providers || []).length > 0))
+      .catch(() => setHasKeys(false));
   }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, loading, step]);
+
+  useEffect(() => {
+    return () => {
+      if (stepTimer.current) clearInterval(stepTimer.current);
+    };
+  }, []);
+
+  function startProgress() {
+    setStep(0);
+    if (stepTimer.current) clearInterval(stepTimer.current);
+    stepTimer.current = setInterval(() => {
+      setStep((s) => Math.min(s + 1, THINK_STEPS.length - 1));
+    }, 900);
+  }
+
+  function stopProgress() {
+    if (stepTimer.current) clearInterval(stepTimer.current);
+    stepTimer.current = null;
+  }
 
   async function closeChat() {
     if (conversationId) {
@@ -72,9 +77,9 @@ export default function AiChatPage() {
     e?.preventDefault();
     const text = input.trim();
     if (!text || loading) return;
-    if (!providers.length) {
+    if (hasKeys === false) {
       setError(
-        "No AI keys on the server. Add OPENROUTER_API_KEY (recommended) or XAI_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY in Vercel, then Redeploy."
+        "No AI keys configured. Add OPENROUTER_API_KEY in Vercel and redeploy."
       );
       return;
     }
@@ -82,6 +87,7 @@ export default function AiChatPage() {
     setError(null);
     setMessages((m) => [...m, { role: "user", content: text }]);
     setLoading(true);
+    startProgress();
     try {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
@@ -89,12 +95,7 @@ export default function AiChatPage() {
         body: JSON.stringify({
           message: text,
           conversationId,
-          provider: provider || undefined,
-          model: provider === "openrouter" ? model : undefined,
-          mode:
-            mode === "race" && providers.includes("openrouter")
-              ? "race"
-              : "single",
+          mode: "auto",
         }),
       });
       const data = await res.json();
@@ -111,6 +112,7 @@ export default function AiChatPage() {
     } catch {
       setError("Network error. Try again.");
     } finally {
+      stopProgress();
       setLoading(false);
     }
   }
@@ -122,99 +124,37 @@ export default function AiChatPage() {
     }
   }
 
-  const canRace = providers.includes("openrouter");
-
   return (
     <AppShell title="AI Chat">
       <div className="flex flex-col h-[calc(100vh-8.5rem)] max-w-3xl mx-auto">
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <select
-            value={provider}
-            onChange={(e) => setProvider(e.target.value as ProviderId)}
-            disabled={!providers.length}
-            className="rounded-lg border border-border/80 bg-card/80 px-2.5 py-1.5 text-sm"
-          >
-            {!ready ? (
-              <option>Loading…</option>
-            ) : providers.length === 0 ? (
-              <option value="">No keys configured</option>
-            ) : (
-              providers.map((p) => (
-                <option key={p} value={p}>
-                  {LABELS[p]}
-                </option>
-              ))
-            )}
-          </select>
-
-          {provider === "openrouter" && orModels.length > 0 && mode === "single" ? (
-            <select
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="rounded-lg border border-border/80 bg-card/80 px-2.5 py-1.5 text-sm max-w-[200px]"
-            >
-              {orModels.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          ) : null}
-
-          {canRace ? (
-            <div className="flex rounded-lg border border-border/80 overflow-hidden text-xs">
-              <button
-                type="button"
-                onClick={() => setMode("single")}
-                className={`px-3 py-1.5 ${
-                  mode === "single"
-                    ? "bg-primary/20 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/40"
-                }`}
-              >
-                Single
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("race")}
-                className={`px-3 py-1.5 ${
-                  mode === "race"
-                    ? "bg-primary/20 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/40"
-                }`}
-              >
-                Race models
-              </button>
-            </div>
-          ) : null}
-
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs text-muted-foreground">
+            Auto model · parallel when available
+          </p>
           <button
             type="button"
             onClick={() => void closeChat()}
-            className="ml-auto text-xs rounded-lg border border-border/80 px-3 py-1.5 text-muted-foreground hover:text-foreground"
+            className="text-xs rounded-lg border border-border/80 px-3 py-1.5 text-muted-foreground hover:text-foreground"
           >
             New chat
           </button>
         </div>
 
-        {!providers.length && ready ? (
-          <div className="mb-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.08] px-4 py-3 text-sm leading-relaxed">
-            Add OPENROUTER_API_KEY (or XAI/OPENAI/GEMINI keys) in Vercel
-            Environment Variables, then Redeploy. Keys are not stored in
-            Supabase Auth.
+        {hasKeys === false ? (
+          <div className="mb-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.08] px-4 py-3 text-sm">
+            Add OPENROUTER_API_KEY in Vercel, then Redeploy.
           </div>
         ) : null}
 
         <div className="flex-1 overflow-y-auto rounded-2xl border border-border/60 bg-card/30 p-4 space-y-4 scroll-smooth">
-          {messages.length === 0 ? (
+          {messages.length === 0 && !loading ? (
             <div className="h-full min-h-[260px] flex flex-col items-center justify-center text-center px-6">
               <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 mb-4 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-violet-500/25">
                 AI
               </div>
-              <p className="text-sm font-medium">Multi-model workspace chat</p>
+              <p className="text-sm font-medium">Ask anything</p>
               <p className="mt-2 text-xs text-muted-foreground max-w-sm leading-relaxed">
-                Single model or Race several OpenRouter models. New chat clears
-                server storage.
+                Nexora picks the model automatically and shows live progress.
               </p>
             </div>
           ) : (
@@ -234,7 +174,7 @@ export default function AiChatPage() {
                 >
                   {m.content}
                   {m.meta ? (
-                    <div className="mt-2 text-[10px] opacity-60 font-mono">
+                    <div className="mt-2 text-[10px] opacity-55 font-mono">
                       {m.meta}
                     </div>
                   ) : null}
@@ -242,10 +182,49 @@ export default function AiChatPage() {
               </div>
             ))
           )}
+
           {loading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Spinner />
-              <span>{mode === "race" ? "Racing models…" : "Generating…"}</span>
+            <div className="rounded-2xl border border-border/40 bg-muted/30 px-4 py-3 space-y-2 max-w-md">
+              {THINK_STEPS.map((label, i) => {
+                const done = i < step;
+                const active = i === step;
+                return (
+                  <div
+                    key={label}
+                    className={`flex items-center gap-2.5 text-xs ${
+                      active
+                        ? "text-foreground opacity-100"
+                        : done
+                          ? "text-muted-foreground opacity-70"
+                          : "text-muted-foreground opacity-35"
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                        active
+                          ? "bg-primary animate-pulse"
+                          : done
+                            ? "bg-primary/60"
+                            : "bg-border"
+                      }`}
+                    />
+                    <span>{label}</span>
+                    {active ? (
+                      <span className="ml-auto text-[10px] text-primary font-medium">
+                        live
+                      </span>
+                    ) : null}
+                  </div>
+                );
+              })}
+              <div className="pt-1 h-1 rounded-full bg-border/50 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-violet-500 to-blue-500 transition-all duration-700 ease-out"
+                  style={{
+                    width: `${((step + 1) / THINK_STEPS.length) * 100}%`,
+                  }}
+                />
+              </div>
             </div>
           ) : null}
           <div ref={bottomRef} />
