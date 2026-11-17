@@ -1,4 +1,4 @@
-export type AIProviderId = "xai" | "openai" | "gemini";
+export type AIProviderId = "openrouter" | "xai" | "openai" | "gemini";
 
 export type AIProviderConfig = {
   id: AIProviderId;
@@ -9,8 +9,25 @@ export type AIProviderConfig = {
   kind: "openai-compatible" | "gemini";
 };
 
+export const OPENROUTER_MODELS = [
+  { id: "x-ai/grok-3-mini", label: "Grok 3 Mini" },
+  { id: "openai/gpt-4o-mini", label: "GPT-4o Mini" },
+  { id: "google/gemini-2.0-flash-001", label: "Gemini 2.0 Flash" },
+  { id: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet" },
+  { id: "deepseek/deepseek-chat", label: "DeepSeek Chat" },
+  { id: "meta-llama/llama-3.3-70b-instruct", label: "Llama 3.3 70B" },
+] as const;
+
 export function getProvider(id: AIProviderId): AIProviderConfig {
   const providers: Record<AIProviderId, AIProviderConfig> = {
+    openrouter: {
+      id: "openrouter",
+      label: "OpenRouter",
+      model: process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini",
+      baseUrl: process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1",
+      apiKey: process.env.OPENROUTER_API_KEY,
+      kind: "openai-compatible",
+    },
     xai: {
       id: "xai",
       label: "Grok (xAI)",
@@ -42,19 +59,24 @@ export function getProvider(id: AIProviderId): AIProviderConfig {
 }
 
 export function listConfiguredProviders(): AIProviderId[] {
-  return (["xai", "openai", "gemini"] as AIProviderId[]).filter((id) =>
-    Boolean(getProvider(id).apiKey)
+  return (["openrouter", "xai", "openai", "gemini"] as AIProviderId[]).filter(
+    (id) => Boolean(getProvider(id).apiKey)
   );
 }
 
 export function resolveProvider(preferred?: string): AIProviderConfig {
   const id = preferred as AIProviderId | undefined;
   if (id && getProvider(id).apiKey) return getProvider(id);
-  for (const fallback of ["xai", "openai", "gemini"] as AIProviderId[]) {
+  for (const fallback of [
+    "openrouter",
+    "xai",
+    "openai",
+    "gemini",
+  ] as AIProviderId[]) {
     const p = getProvider(fallback);
     if (p.apiKey) return p;
   }
-  return getProvider("xai");
+  return getProvider("openrouter");
 }
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
@@ -62,32 +84,76 @@ type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 export async function chatCompletion(
   provider: AIProviderConfig,
   messages: ChatMessage[],
-  opts?: { temperature?: number }
+  opts?: { temperature?: number; modelOverride?: string }
 ): Promise<string> {
   if (!provider.apiKey) {
     throw new Error(
-      `${provider.label} is not configured. Add the API key in Vercel environment variables and redeploy.`
+      `${provider.label} is not configured. Add the API key in Vercel and redeploy.`
     );
   }
   if (provider.kind === "gemini") {
     return geminiChat(provider, messages, opts?.temperature ?? 0.7);
   }
-  return openaiCompatibleChat(provider, messages, opts?.temperature ?? 0.7);
+  return openaiCompatibleChat(
+    provider,
+    messages,
+    opts?.temperature ?? 0.7,
+    opts?.modelOverride
+  );
+}
+
+export async function raceOpenRouterModels(
+  promptMessages: ChatMessage[],
+  modelIds: string[]
+): Promise<{ reply: string; model: string }> {
+  const provider = getProvider("openrouter");
+  if (!provider.apiKey) {
+    throw new Error("OPENROUTER_API_KEY is not configured.");
+  }
+  const results = await Promise.allSettled(
+    modelIds.map(async (model) => {
+      const reply = await openaiCompatibleChat(
+        provider,
+        promptMessages,
+        0.7,
+        model
+      );
+      return { reply, model };
+    })
+  );
+  for (const r of results) {
+    if (r.status === "fulfilled" && r.value.reply) return r.value;
+  }
+  const err = results.find((r) => r.status === "rejected") as
+    | PromiseRejectedResult
+    | undefined;
+  throw new Error(
+    err?.reason instanceof Error
+      ? err.reason.message
+      : "All raced models failed."
+  );
 }
 
 async function openaiCompatibleChat(
   provider: AIProviderConfig,
   messages: ChatMessage[],
-  temperature: number
+  temperature: number,
+  modelOverride?: string
 ): Promise<string> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${provider.apiKey}`,
+    "Content-Type": "application/json",
+  };
+  if (provider.id === "openrouter") {
+    headers["HTTP-Referer"] =
+      process.env.NEXT_PUBLIC_APP_URL || "https://nexora.app";
+    headers["X-Title"] = "Nexora";
+  }
   const res = await fetch(`${provider.baseUrl}/chat/completions`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${provider.apiKey}`,
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({
-      model: provider.model,
+      model: modelOverride || provider.model,
       messages,
       temperature,
     }),
