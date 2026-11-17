@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { RequestStatementButton } from "@/components/usage/request-statement-button";
 import { AppShell } from "@/components/layout/app-shell";
 import { NexoraBrand } from "@/components/brand/nexora-brand";
 
@@ -72,6 +73,7 @@ export default async function SubscriptionPage() {
             documents / race mode). Input and output text are estimated at roughly 4 characters per token when
             the provider does not return counts.
           </p>
+          <RequestStatementButton />
         </div>
       </div>
     </AppShell>
