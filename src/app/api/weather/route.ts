@@ -48,30 +48,4 @@ export async function GET(request: Request) {
     const forecastRes = await fetch(
       `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(
         city
-      )}&appid=${key}&units=metric`,
-      { next: { revalidate: 600 } }
-    );
-    const forecast = forecastRes.ok ? await forecastRes.json() : null;
-
-    return NextResponse.json({
-      configured: true,
-      current: {
-        name: current.name,
-        country: current.sys?.country,
-        temp: current.main?.temp,
-        feels_like: current.main?.feels_like,
-        humidity: current.main?.humidity,
-        wind: current.wind?.speed,
-        visibility: current.visibility,
-        description: current.weather?.[0]?.description,
-        icon: current.weather?.[0]?.icon,
-      },
-      forecast: forecast?.list?.slice(0, 8) || [],
-    });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to fetch weather" },
-      { status: 500 }
-    );
-  }
-}
+      )}&appid=${key}&units=¶»§q«^
