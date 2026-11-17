@@ -52,6 +52,21 @@ export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
     }
   }
 
+  async function verifySmtp() {
+    setSmtpBusy(true);
+    setSmtpResult(null);
+    try {
+      const response = await fetch("/api/admin/email-status", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok || !result.connected) throw new Error(result.error || "SMTP connection check failed.");
+      setSmtpResult({ tone: "success", text: result.message || "SMTP connection verified." });
+    } catch (error) {
+      setSmtpResult({ tone: "error", text: error instanceof Error ? error.message : "SMTP connection check failed." });
+    } finally {
+      setSmtpBusy(false);
+    }
+  }
+
   const stats = [
     ["Members", fmt(totals.member_count)],
     ["Active users", fmt(totals.active_users)],
@@ -65,6 +80,13 @@ export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
         <div><p className="text-sm text-muted-foreground">Workspace administration</p><h2 className="mt-1 text-xl font-semibold">Usage and member management</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Review each member’s token usage, balance, AI request count, and input/output token totals. Balance changes are recorded in the token ledger.</p></div>
         <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">Admin access</span>
       </div>
+      <section className="rounded-2xl border border-border/70 bg-card/50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><h3 className="font-semibold">Outbound email</h3><p className="mt-1 text-xs text-muted-foreground">Checks the SMTP credentials configured in Vercel for administrator usage reports. Supabase Auth email has its own SMTP configuration.</p></div>
+          <button type="button" onClick={() => void verifySmtp()} disabled={smtpBusy} className="rounded-lg border border-border px-3 py-2 text-xs font-medium hover:bg-white/5 disabled:opacity-50">{smtpBusy ? "Checking…" : "Check SMTP"}</button>
+        </div>
+        {smtpResult ? <p role="status" className={"mt-3 text-xs " + (smtpResult.tone === "success" ? "text-emerald-300" : "text-amber-300")}>{smtpResult.text}</p> : null}
+      </section>
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {stats.map((item) => <div key={item[0]} className="rounded-2xl border border-border/70 bg-card/60 p-4"><p className="text-xs text-muted-foreground">{item[0]}</p><p className="mt-2 text-2xl font-semibold tabular-nums">{item[1]}</p></div>)}
       </div>

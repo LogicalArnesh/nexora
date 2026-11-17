@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NexoraBrand } from "@/components/brand/nexora-brand";
 
 export function AuthShell({
   title,
@@ -20,11 +21,8 @@ export function AuthShell({
 
       <header className="relative z-10 border-b border-white/5 bg-black/20 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-6xl items-center px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 text-white font-bold text-sm shadow-lg shadow-violet-500/30 transition-transform group-hover:scale-105">
-              N
-            </div>
-            <span className="text-lg font-semibold tracking-tight">Nexora</span>
+          <Link href="/" className="transition-transform group-hover:scale-[1.02]">
+            <NexoraBrand size={36} subtitle="TwoTany" priority />
           </Link>
         </div>
       </header>

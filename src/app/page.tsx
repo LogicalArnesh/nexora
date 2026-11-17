@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NexoraBrand } from "@/components/brand/nexora-brand";
 
 const FEATURED_TOOLS = [
   {
@@ -39,11 +40,8 @@ export default function LandingPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-              N
-            </div>
-            <span className="text-lg font-semibold tracking-tight">Nexora</span>
+          <Link href="/" className="transition-transform hover:scale-[1.02]">
+            <NexoraBrand size={40} subtitle="TwoTany" priority />
           </Link>
           <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">
@@ -188,12 +186,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="mt-auto border-t border-border/60 py-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-bold">
-              N
-            </div>
-            <span className="text-sm font-medium">Nexora</span>
-          </div>
+          <NexoraBrand size={30} subtitle="TwoTany" />
           <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()} Nexora. Everything You Need. One
             Intelligent Workspace.

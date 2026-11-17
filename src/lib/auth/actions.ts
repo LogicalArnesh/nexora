@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAppUrl } from "@/lib/env";
 
 export type AuthState = {
   error?: string;
@@ -33,6 +34,7 @@ export async function signUp(
       data: {
         full_name: fullName || email.split("@")[0],
       },
+      emailRedirectTo: `${getAppUrl()}/auth/callback`,
     },
   });
 

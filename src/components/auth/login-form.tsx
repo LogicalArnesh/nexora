@@ -32,10 +32,7 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
         email: email.trim(),
         options: {
           shouldCreateUser: true,
-          emailRedirectTo:
-            typeof window !== "undefined"
-              ? `${window.location.origin}/auth/callback`
-              : undefined,
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/callback`,
         },
       });
       if (error) {
@@ -43,9 +40,9 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
         return;
       }
       setOtpSent(true);
-      setOtpMsg("Check your inbox for a 6-digit code (or magic link).");
+      setOtpMsg("Supabase accepted the request. Check your inbox and spam folder for the 6-digit code.");
     } catch {
-      setOtpErr("Could not send code. Configure SMTP in Supabase.");
+      setOtpErr("Could not reach Supabase Auth. Check your connection and try again.");
     } finally {
       setOtpBusy(false);
     }

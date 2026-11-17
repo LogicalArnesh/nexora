@@ -17,6 +17,7 @@ export const metadata: Metadata = {
     default: "Nexora — Everything You Need. One Intelligent Workspace.",
     template: "%s · Nexora",
   },
+  icons: { icon: "/nexora-mark.webp", shortcut: "/nexora-mark.webp" },
   description:
     "Nexora is a premium all-in-one workspace: AI tools, productivity, project management, weather, notes, expenses and more — unified under one intelligent dashboard.",
   keywords: [

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut } from "@/lib/auth/actions";
+import { NexoraBrand, NexoraMark } from "@/components/brand/nexora-brand";
 
 const NAV_GROUPS = [
   {
@@ -75,14 +76,8 @@ export function AppShell({
     <div className="min-h-screen bg-nexora-gradient flex">
       <aside className="hidden md:flex w-60 flex-col border-r border-border/50 bg-[#0c0b12]/85 backdrop-blur-xl">
         <div className="h-14 flex items-center gap-2.5 px-4 border-b border-border/50">
-          <Link href="/dashboard" className="flex items-center gap-2.5 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 text-white font-bold text-sm shadow-lg shadow-violet-500/20 transition-transform duration-200 group-hover:scale-105">
-              N
-            </div>
-            <div className="leading-tight">
-              <span className="font-semibold tracking-tight block">Nexora</span>
-              <span className="text-[10px] text-muted-foreground">Workspace</span>
-            </div>
+          <Link href="/dashboard" className="group transition-transform duration-200 hover:scale-[1.02]">
+            <NexoraBrand size={34} subtitle="TwoTany" priority />
           </Link>
         </div>
         <nav className="flex-1 overflow-y-auto p-3 space-y-4">
@@ -127,9 +122,7 @@ export function AppShell({
       <div className="flex-1 flex flex-col min-w-0">
         <header className="md:hidden sticky top-0 z-40 h-14 border-b border-border/50 bg-background/80 backdrop-blur-md flex items-center justify-between px-4">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 text-white text-xs font-bold">
-              N
-            </div>
+            <NexoraMark size={29} priority />
             <span className="font-semibold text-sm">{title || "Nexora"}</span>
           </Link>
           <form action={signOut}>

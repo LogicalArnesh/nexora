@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { NexoraMark } from "@/components/brand/nexora-brand";
 
 export default function GlobalError({
   error,
@@ -17,7 +18,7 @@ export default function GlobalError({
   return (
     <main className="nexora-error-screen">
       <div className="nexora-error-card">
-        <div className="nexora-loading-mark">N</div>
+        <div className="nexora-loading-mark"><NexoraMark size={48} /></div>
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Nexora workspace</p>
         <h1 className="text-2xl font-semibold">This page hit a problem</h1>
         <p className="text-sm text-muted-foreground">Your workspace is safe. Retry the page or return to your dashboard.</p>
