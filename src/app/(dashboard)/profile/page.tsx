@@ -26,8 +26,9 @@ export default async function ProfilePage() {
             {(profile?.full_name || user.email || "U").slice(0, 1).toUpperCase()}
           </div>
           <div>
-            <p className="font-medium">{profile?.full_name || "Member"}</p>
+            <p className="font-medium">{profile?.full_name || user.email || "Nexora account"}</p>
             <p className="text-sm text-muted-foreground">{user.email}</p>
+            <span className="mt-1 inline-flex rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">{profile?.role === "admin" ? "Administrator" : "Member"}</span>
           </div>
         </div>
         <dl className="grid gap-3 text-sm">

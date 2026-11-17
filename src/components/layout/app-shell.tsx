@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { signOut } from "@/lib/auth/actions";
 
 const NAV_GROUPS = [
@@ -10,6 +11,7 @@ const NAV_GROUPS = [
     items: [
       { href: "/dashboard", label: "Overview" },
       { href: "/explore", label: "Marketplace" },
+      { href: "/skills", label: "Skills" },
     ],
   },
   {
@@ -53,6 +55,16 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/admin/status", { cache: "no-store", signal: controller.signal })
+      .then((response) => response.ok ? response.json() : { isAdmin: false })
+      .then((result: { isAdmin?: boolean }) => setIsAdmin(result.isAdmin === true))
+      .catch(() => setIsAdmin(false));
+    return () => controller.abort();
+  }, []);
+  const navGroups = isAdmin ? [...NAV_GROUPS, { label: "Administration", items: [{ href: "/admin", label: "Admin Console" }] }] : NAV_GROUPS;
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard";
@@ -74,7 +86,7 @@ export function AppShell({
           </Link>
         </div>
         <nav className="flex-1 overflow-y-auto p-3 space-y-4">
-          {NAV_GROUPS.map((group) => (
+          {navGroups.map((group) => (
             <div key={group.label}>
               <div className="px-3 mb-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
                 {group.label}
@@ -127,8 +139,8 @@ export function AppShell({
           </form>
         </header>
         <div className="md:hidden overflow-x-auto border-b border-border/40 px-2 py-2 flex gap-1.5">
-          {NAV_GROUPS.flatMap((g) => g.items)
-            .slice(0, 10)
+          {navGroups.flatMap((g) => g.items)
+            
             .map((item) => (
               <Link
                 key={item.href}

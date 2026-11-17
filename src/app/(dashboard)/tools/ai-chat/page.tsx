@@ -27,6 +27,10 @@ export default function AiChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const stepTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    const preset = new URLSearchParams(window.location.search).get("prompt");
+    if (preset) setInput(preset.slice(0, 4000));
+  }, []);
 
   useEffect(() => {
     fetch("/api/ai/chat", { signal: AbortSignal.timeout(12000) })

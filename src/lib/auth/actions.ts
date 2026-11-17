@@ -131,3 +131,26 @@ export async function resetPassword(
   revalidatePath("/", "layout");
   redirect("/dashboard");
 }
+
+
+export async function saveProfile(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  const fullName = String(formData.get("full_name") || "").trim();
+  const username = String(formData.get("username") || "").trim();
+  const bio = String(formData.get("bio") || "").trim();
+  if (fullName.length > 80) return { error: "Display name must be 80 characters or fewer." };
+  if (bio.length > 240) return { error: "Bio must be 240 characters or fewer." };
+  if (username && !/^[A-Za-z0-9_]{3,20}$/.test(username)) return { error: "Username must be 3–20 letters, numbers, or underscores." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Please sign in again before saving your settings." };
+  const { error } = await supabase.from("profiles").update({
+    full_name: fullName || null, username: username || null, bio: bio || null,
+    updated_at: new Date().toISOString(),
+  }).eq("id", user.id);
+  if (error) {
+    if (error.code === "23505") return { error: "That username is already in use." };
+    return { error: "Could not save your profile. Please try again." };
+  }
+  revalidatePath("/settings"); revalidatePath("/profile"); revalidatePath("/dashboard");
+  return { success: "Your settings have been saved." };
+}

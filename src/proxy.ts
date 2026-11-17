@@ -9,7 +9,7 @@ type CookieToSet = {
   options?: any;
 };
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const url = getSupabaseUrl();
   const anon = getSupabaseAnonKey();
 
