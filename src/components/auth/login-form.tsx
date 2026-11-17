@@ -1,78 +1,233 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { signIn, type AuthState } from "@/lib/auth/actions";
+import { createClient } from "@/lib/supabase/client";
 
 const initial: AuthState = {};
 
 export function LoginForm({ redirectTo }: { redirectTo?: string }) {
   const [state, formAction, pending] = useActionState(signIn, initial);
+  const [tab, setTab] = useState<"password" | "otp">("password");
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpBusy, setOtpBusy] = useState(false);
+  const [otpMsg, setOtpMsg] = useState<string | null>(null);
+  const [otpErr, setOtpErr] = useState<string | null>(null);
+
+  async function sendOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setOtpErr(null);
+    setOtpMsg(null);
+    if (!email.trim()) {
+      setOtpErr("Enter your email.");
+      return;
+    }
+    setOtpBusy(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/auth/callback`
+              : undefined,
+        },
+      });
+      if (error) {
+        setOtpErr(error.message);
+        return;
+      }
+      setOtpSent(true);
+      setOtpMsg("Check your inbox for a 6-digit code (or magic link).");
+    } catch {
+      setOtpErr("Could not send code. Configure SMTP in Supabase.");
+    } finally {
+      setOtpBusy(false);
+    }
+  }
+
+  async function verifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setOtpErr(null);
+    setOtpBusy(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: otp.trim(),
+        type: "email",
+      });
+      if (error) {
+        setOtpErr(error.message);
+        return;
+      }
+      window.location.href = redirectTo || "/";
+    } catch {
+      setOtpErr("Invalid code.");
+    } finally {
+      setOtpBusy(false);
+    }
+  }
 
   return (
-    <form action={formAction} className="space-y-5">
-      {redirectTo ? (
-        <input type="hidden" name="redirect" value={redirectTo} />
-      ) : null}
-
-      {state.error ? (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {state.error}
-        </div>
-      ) : null}
-
-      <div className="space-y-2">
-        <label htmlFor="email" className="text-sm font-medium">
-          Email
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          placeholder="you@company.com"
-          className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm outline-none focus-ring placeholder:text-muted-foreground"
-        />
+    <div className="space-y-5">
+      <div className="flex rounded-xl border border-white/10 p-1 bg-black/20">
+        <button
+          type="button"
+          onClick={() => setTab("password")}
+          className={`flex-1 rounded-lg py-2 text-xs font-medium transition-all ${
+            tab === "password"
+              ? "bg-white/10 text-foreground shadow"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Password
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("otp")}
+          className={`flex-1 rounded-lg py-2 text-xs font-medium transition-all ${
+            tab === "otp"
+              ? "bg-white/10 text-foreground shadow"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Email code
+        </button>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <label htmlFor="password" className="text-sm font-medium">
-            Password
-          </label>
-          <Link
-            href="/forgot-password"
-            className="text-xs text-muted-foreground hover:text-primary transition-colors"
+      {tab === "password" ? (
+        <form action={formAction} className="space-y-5">
+          {redirectTo ? (
+            <input type="hidden" name="redirect" value={redirectTo} />
+          ) : null}
+          {state.error ? (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {state.error}
+            </div>
+          ) : null}
+          <div className="space-y-2">
+            <label htmlFor="email" className="text-sm font-medium">
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              placeholder="you@company.com"
+              className="w-full rounded-lg border border-input bg-background/80 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label htmlFor="password" className="text-sm font-medium">
+                Password
+              </label>
+              <Link
+                href="/forgot-password"
+                className="text-xs text-muted-foreground hover:text-primary"
+              >
+                Forgot password?
+              </Link>
+            </div>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              placeholder="••••••••"
+              className="w-full rounded-lg border border-input bg-background/80 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={pending}
+            className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
           >
-            Forgot password?
-          </Link>
-        </div>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          placeholder="••••••••"
-          className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm outline-none focus-ring placeholder:text-muted-foreground"
-        />
-      </div>
-
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60 focus-ring"
-      >
-        {pending ? "Signing in…" : "Sign in"}
-      </button>
-
-      <p className="text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{" "}
-        <Link href="/register" className="text-primary hover:underline font-medium">
-          Create one
-        </Link>
-      </p>
-    </form>
+            {pending ? "Signing in…" : "Sign in"}
+          </button>
+          <p className="text-center text-xs text-muted-foreground">
+            No account?{" "}
+            <Link href="/register" className="text-primary hover:underline">
+              Create one
+            </Link>
+          </p>
+        </form>
+      ) : (
+        <form onSubmit={otpSent ? verifyOtp : sendOtp} className="space-y-5">
+          {otpErr ? (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {otpErr}
+            </div>
+          ) : null}
+          {otpMsg ? (
+            <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm">
+              {otpMsg}
+            </div>
+          ) : null}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={otpSent}
+              placeholder="you@company.com"
+              className="w-full rounded-lg border border-input bg-background/80 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
+            />
+          </div>
+          {otpSent ? (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">6-digit code</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={otp}
+                onChange={(e) =>
+                  setOtp(e.target.value.replace(/\D/g, "").slice(0, 8))
+                }
+                required
+                placeholder="000000"
+                className="w-full rounded-lg border border-input bg-background/80 px-3 py-3 text-center text-lg tracking-[0.35em] font-mono outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+          ) : null}
+          <button
+            type="submit"
+            disabled={otpBusy}
+            className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+          >
+            {otpBusy
+              ? "Please wait…"
+              : otpSent
+                ? "Verify & continue"
+                : "Send login code"}
+          </button>
+          {otpSent ? (
+            <button
+              type="button"
+              onClick={() => {
+                setOtpSent(false);
+                setOtp("");
+                setOtpMsg(null);
+              }}
+              className="w-full text-xs text-muted-foreground hover:text-foreground"
+            >
+              Use a different email
+            </button>
+          ) : null}
+        </form>
+      )}
+    </div>
   );
 }
