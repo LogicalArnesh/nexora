@@ -6,10 +6,17 @@ export function createNexoraMailer() {
     ["NEXORA_SMTP_USER", process.env.NEXORA_SMTP_USER],
     ["NEXORA_SMTP_PASSWORD", process.env.NEXORA_SMTP_PASSWORD],
     ["NEXORA_EMAIL_FROM", process.env.NEXORA_EMAIL_FROM],
-  ].filter(([, value]) => !String(value ?? "").trim()).map(([key]) => key);
+  ]
+    .filter(([, value]) => !String(value ?? "").trim())
+    .map(([key]) => key);
 
   if (missing.length) {
-    return { ok: false as const, missing, message: "Configure the SMTP settings in Vercel Production, then redeploy." };
+    return {
+      ok: false as const,
+      missing,
+      message:
+        "Configure NEXORA_SMTP_HOST, NEXORA_SMTP_USER, NEXORA_SMTP_PASSWORD, and NEXORA_EMAIL_FROM in Vercel Production, then redeploy.",
+    };
   }
 
   const host = process.env.NEXORA_SMTP_HOST!.trim();
@@ -20,10 +27,18 @@ export function createNexoraMailer() {
   const secure = process.env.NEXORA_SMTP_SECURE === "true" || port === 465;
 
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    return { ok: false as const, missing: ["NEXORA_SMTP_PORT"], message: "NEXORA_SMTP_PORT must be a valid TCP port." };
+    return {
+      ok: false as const,
+      missing: ["NEXORA_SMTP_PORT"],
+      message: "NEXORA_SMTP_PORT must be a valid TCP port (587 for Gmail STARTTLS, 465 for SSL).",
+    };
   }
-  if (!(/<no-reply@[^>\s]+>/i.test(from) || /^no-reply@[^>\s]+$/i.test(from))) {
-    return { ok: false as const, missing: ["NEXORA_EMAIL_FROM"], message: "Use a verified no-reply sender, such as Nexora <no-reply@your-domain.com>." };
+  if (!from.includes("@")) {
+    return {
+      ok: false as const,
+      missing: ["NEXORA_EMAIL_FROM"],
+      message: "Use a real sender such as Nexora <you@gmail.com> or Nexora <no-reply@your-domain.com>.",
+    };
   }
 
   const transporter = nodemailer.createTransport({
@@ -41,14 +56,17 @@ export function createNexoraMailer() {
 }
 
 export function describeSmtpError(error: unknown) {
-  const code = error && typeof error === "object" && "code" in error
-    ? String((error as { code?: unknown }).code ?? "")
-    : "";
+  const code =
+    error && typeof error === "object" && "code" in error
+      ? String((error as { code?: unknown }).code ?? "")
+      : "";
 
-  if (code === "EAUTH") return "The SMTP server rejected the username or password. Recheck the SMTP credentials in Vercel.";
+  if (code === "EAUTH")
+    return "The SMTP server rejected the username or password. For Gmail, use an App Password (not your normal password).";
   if (code === "ENOTFOUND" || code === "ECONNECTION" || code === "ECONNREFUSED" || code === "ETIMEDOUT") {
-    return "Nexora could not connect to the SMTP server. Check the host, port, TLS setting, and provider status.";
+    return "Nexora could not connect to the SMTP server. Check host, port, TLS, and provider status.";
   }
-  if (code === "EENVELOPE") return "The SMTP server rejected the sender or recipient. Confirm the sender address is verified with your provider.";
+  if (code === "EENVELOPE")
+    return "The SMTP server rejected the sender or recipient. Confirm the From address matches the authenticated mailbox when using Gmail.";
   return "The SMTP provider could not complete the request. Check its SMTP activity logs and configuration.";
 }
