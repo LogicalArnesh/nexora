@@ -3,7 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import {
   chatCompletion,
   listConfiguredProviders,
+  raceOpenRouterModels,
   resolveProvider,
+  OPENROUTER_MODELS,
   type AIProviderId,
 } from "@/lib/ai/providers";
 
@@ -12,10 +14,13 @@ export async function GET() {
   return NextResponse.json({
     providers: configured,
     labels: {
+      openrouter: "OpenRouter (multi-model)",
       xai: "Grok (xAI)",
       openai: "ChatGPT (OpenAI)",
       gemini: "Gemini (Google)",
     },
+    openrouterModels: OPENROUTER_MODELS,
+    hasOpenRouter: configured.includes("openrouter"),
   });
 }
 
@@ -32,25 +37,26 @@ export async function POST(request: Request) {
   const message = String(body.message || "").trim();
   const conversationId = body.conversationId as string | undefined;
   const providerId = body.provider as AIProviderId | undefined;
+  const mode = (body.mode as string) || "single";
+  const modelOverride = body.model as string | undefined;
 
   if (!message) {
     return NextResponse.json({ error: "Message required" }, { status: 400 });
   }
 
-  const provider = resolveProvider(providerId);
-  if (!provider.apiKey) {
+  const configured = listConfiguredProviders();
+  if (!configured.length) {
     return NextResponse.json(
       {
         error:
-          "No AI provider configured. Add XAI_API_KEY, OPENAI_API_KEY, and/or GEMINI_API_KEY in Vercel / .env.local.",
-        configured: listConfiguredProviders(),
+          "No AI provider configured. Add OPENROUTER_API_KEY (recommended) or XAI_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY in Vercel, then redeploy.",
+        configured,
       },
       { status: 503 }
     );
   }
 
   let convId = conversationId;
-
   if (!convId) {
     const { data: conv, error } = await supabase
       .from("ai_conversations")
@@ -58,7 +64,7 @@ export async function POST(request: Request) {
         user_id: user.id,
         title: message.slice(0, 60),
         tool_context: "chat",
-        model: `${provider.id}:${provider.model}`,
+        model: mode === "race" ? "race" : providerId || "auto",
       })
       .select("id")
       .single();
@@ -81,31 +87,50 @@ export async function POST(request: Request) {
     .order("created_at", { ascending: true })
     .limit(40);
 
+  const messages = [
+    {
+      role: "system" as const,
+      content:
+        "You are Nexora AI, a professional assistant in the Nexora workspace. Be clear, accurate, and practical.",
+    },
+    ...(history || []).map((m) => ({
+      role: m.role as "user" | "assistant" | "system",
+      content: m.content,
+    })),
+  ];
+
   try {
-    const reply = await chatCompletion(provider, [
-      {
-        role: "system",
-        content:
-          "You are Nexora AI, a helpful assistant inside the Nexora workspace. Be clear, practical, and useful. When helping with documents or tasks, do the work the user asks for.",
-      },
-      ...(history || []).map((m) => ({
-        role: m.role as "user" | "assistant" | "system",
-        content: m.content,
-      })),
-    ]);
+    let reply: string;
+    let usedModel = "";
+    let usedProvider = "";
+
+    if (mode === "race" && configured.includes("openrouter")) {
+      const raceModels = OPENROUTER_MODELS.slice(0, 4).map((m) => m.id);
+      const raced = await raceOpenRouterModels(messages, raceModels);
+      reply = raced.reply;
+      usedModel = raced.model;
+      usedProvider = "openrouter";
+    } else {
+      const provider = resolveProvider(providerId);
+      reply = await chatCompletion(provider, messages, {
+        modelOverride:
+          provider.id === "openrouter" ? modelOverride : undefined,
+      });
+      usedModel = modelOverride || provider.model;
+      usedProvider = provider.id;
+    }
 
     await supabase.from("ai_messages").insert({
       conversation_id: convId,
       role: "assistant",
       content: reply,
-      metadata: { provider: provider.id, model: provider.model },
     });
 
     return NextResponse.json({
       conversationId: convId,
       reply,
-      provider: provider.id,
-      model: provider.model,
+      provider: usedProvider,
+      model: usedModel,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "AI request failed";
@@ -121,32 +146,15 @@ export async function DELETE(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
   const { searchParams } = new URL(request.url);
   const conversationId = searchParams.get("conversationId");
   if (!conversationId) {
-    return NextResponse.json(
-      { error: "conversationId required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "conversationId required" }, { status: 400 });
   }
-
-  const { data: conv } = await supabase
-    .from("ai_conversations")
-    .select("id")
-    .eq("id", conversationId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!conv) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
   await supabase
-    .from("ai_messages")
+    .from("ai_conversations")
     .delete()
-    .eq("conversation_id", conversationId);
-  await supabase.from("ai_conversations").delete().eq("id", conversationId);
-
-  return NextResponse.json({ success: true, deleted: conversationId });
+    .eq("id", conversationId)
+    .eq("user_id", user.id);
+  return NextResponse.json({ ok: true });
 }
