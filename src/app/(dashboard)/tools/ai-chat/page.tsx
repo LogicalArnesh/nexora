@@ -7,15 +7,18 @@ type Msg = { role: "user" | "assistant"; content: string; meta?: string };
 
 const THINK_STEPS = [
   "Understanding your request…",
+  "Reading attached context…",
   "Selecting the best model…",
   "Running parallel reasoning…",
-  "Checking consistency…",
   "Preparing the answer…",
 ];
 
 export default function AiChatPage() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
+  const [doc, setDoc] = useState("");
+  const [docName, setDocName] = useState<string | null>(null);
+  const [showDoc, setShowDoc] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [hasKeys, setHasKeys] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
@@ -47,12 +50,33 @@ export default function AiChatPage() {
     if (stepTimer.current) clearInterval(stepTimer.current);
     stepTimer.current = setInterval(() => {
       setStep((s) => Math.min(s + 1, THINK_STEPS.length - 1));
-    }, 900);
+    }, 850);
   }
 
   function stopProgress() {
     if (stepTimer.current) clearInterval(stepTimer.current);
     stepTimer.current = null;
+  }
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".pdf") || file.type === "application/pdf") {
+      setError("Upload .txt / .md / .csv / .json, or paste PDF text into Attach.");
+      e.target.value = "";
+      return;
+    }
+    try {
+      const text = await file.text();
+      setDoc(text.slice(0, 80000));
+      setDocName(file.name);
+      setShowDoc(true);
+    } catch {
+      setError("Could not read file.");
+    }
+    e.target.value = "";
   }
 
   async function closeChat() {
@@ -78,9 +102,7 @@ export default function AiChatPage() {
     const text = input.trim();
     if (!text || loading) return;
     if (hasKeys === false) {
-      setError(
-        "No AI keys configured. Add OPENROUTER_API_KEY in Vercel and redeploy."
-      );
+      setError("Add OPENROUTER_API_KEY in Vercel and Redeploy.");
       return;
     }
     setInput("");
@@ -88,12 +110,15 @@ export default function AiChatPage() {
     setMessages((m) => [...m, { role: "user", content: text }]);
     setLoading(true);
     startProgress();
+    const payloadMessage = doc.trim()
+      ? `Document context (${docName || "attached"}):\n---\n${doc.slice(0, 60000)}\n---\n\nUser question:\n${text}`
+      : text;
     try {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: text,
+          message: payloadMessage,
           conversationId,
           mode: "auto",
         }),
@@ -127,34 +152,81 @@ export default function AiChatPage() {
   return (
     <AppShell title="AI Chat">
       <div className="flex flex-col h-[calc(100vh-8.5rem)] max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs text-muted-foreground">
-            Auto model · parallel when available
-          </p>
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => setShowDoc((v) => !v)}
+            className={`text-xs rounded-lg border px-3 py-1.5 transition-all duration-200 ${
+              showDoc || doc
+                ? "border-primary/40 bg-primary/10 text-foreground"
+                : "border-border/80 text-muted-foreground hover:text-foreground hover:bg-white/5"
+            }`}
+          >
+            {doc ? `Document · ${docName || "pasted"}` : "Attach document"}
+          </button>
+          <label className="text-xs rounded-lg border border-border/80 px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-white/5 cursor-pointer transition-all duration-200">
+            Upload file
+            <input
+              type="file"
+              accept=".txt,.md,.csv,.json,.log,text/plain"
+              className="hidden"
+              onChange={onFile}
+            />
+          </label>
+          {doc ? (
+            <button
+              type="button"
+              onClick={() => {
+                setDoc("");
+                setDocName(null);
+              }}
+              className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+            >
+              Clear doc
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => void closeChat()}
-            className="text-xs rounded-lg border border-border/80 px-3 py-1.5 text-muted-foreground hover:text-foreground"
+            className="ml-auto text-xs rounded-lg border border-border/80 px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all duration-200"
           >
             New chat
           </button>
         </div>
 
+        {showDoc ? (
+          <div className="mb-3 rounded-xl border border-border/60 bg-card/40 p-3 space-y-2 nexora-fade-up">
+            <p className="text-[11px] text-muted-foreground">
+              Attached context is sent with each message (.txt / .md / paste).
+            </p>
+            <textarea
+              value={doc}
+              onChange={(e) => {
+                setDoc(e.target.value);
+                if (!docName) setDocName("pasted");
+              }}
+              rows={5}
+              placeholder="Paste document text here…"
+              className="w-full rounded-lg border border-border/80 bg-background/50 px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-primary/25"
+            />
+          </div>
+        ) : null}
+
         {hasKeys === false ? (
           <div className="mb-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.08] px-4 py-3 text-sm">
-            Add OPENROUTER_API_KEY in Vercel, then Redeploy.
+            AI needs OPENROUTER_API_KEY (or XAI/OPENAI/GEMINI) in Vercel → Redeploy.
           </div>
         ) : null}
 
         <div className="flex-1 overflow-y-auto rounded-2xl border border-border/60 bg-card/30 p-4 space-y-4 scroll-smooth">
           {messages.length === 0 && !loading ? (
-            <div className="h-full min-h-[260px] flex flex-col items-center justify-center text-center px-6">
+            <div className="h-full min-h-[240px] flex flex-col items-center justify-center text-center px-6">
               <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 mb-4 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-violet-500/25">
                 AI
               </div>
               <p className="text-sm font-medium">Ask anything</p>
               <p className="mt-2 text-xs text-muted-foreground max-w-sm leading-relaxed">
-                Nexora picks the model automatically and shows live progress.
+                Auto model selection with live progress. Attach a document for grounded answers.
               </p>
             </div>
           ) : (
@@ -191,12 +263,12 @@ export default function AiChatPage() {
                 return (
                   <div
                     key={label}
-                    className={`flex items-center gap-2.5 text-xs ${
+                    className={`flex items-center gap-2.5 text-xs transition-opacity duration-300 ${
                       active
-                        ? "text-foreground opacity-100"
+                        ? "opacity-100 text-foreground"
                         : done
-                          ? "text-muted-foreground opacity-70"
-                          : "text-muted-foreground opacity-35"
+                          ? "opacity-70 text-muted-foreground"
+                          : "opacity-30 text-muted-foreground"
                     }`}
                   >
                     <span
@@ -249,7 +321,7 @@ export default function AiChatPage() {
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="shrink-0 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-45"
+            className="shrink-0 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-45 hover:opacity-95 active:scale-[0.98] transition-all duration-150"
           >
             {loading ? "…" : "Send"}
           </button>
