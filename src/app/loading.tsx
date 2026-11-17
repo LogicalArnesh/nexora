@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 export default function Loading() {
   return (
     <main className="nexora-loading-screen" role="status" aria-live="polite" aria-label="Loading Nexora">
