@@ -54,7 +54,7 @@ The Admin Console sends these messages directly through SMTP using Nodemailer. S
 - `NEXORA_SMTP_SECURE` — `true` for port 465; normally `false` for port 587.
 - `NEXORA_EMAIL_FROM` — verified sender, for example `Nexora <no-reply@your-verified-domain.com>`.
 
-Keep these values encrypted in Vercel. Do not put SMTP passwords in GitHub or `NEXT_PUBLIC_` variables. Redeploy after adding or changing them. The Admin Console has a **Check SMTP** action that verifies the app's SMTP connection without sending a message.
+Keep these values encrypted in Vercel. Do not put SMTP passwords in GitHub or `NEXT_PUBLIC_` variables. Redeploy after adding or changing them. The Admin Console has a **Check SMTP** action that verifies the app's SMTP connection without sending a message. The initial production build caught a missing React state declaration in that control; the follow-up fix adds the state explicitly and is validated by the next Vercel build.
 
 Usage reports include a Nexora Billing & Workspace signature, a no-reply sender/reply-to address, and automatic-message headers. Delivery is only available once the Vercel SMTP variables are configured and accepted by your SMTP provider.
 

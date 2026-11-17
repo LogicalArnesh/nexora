@@ -22,6 +22,8 @@ export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+  const [smtpBusy, setSmtpBusy] = useState(false);
+  const [smtpResult, setSmtpResult] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const members = data.members ?? [];
   const events = data.recent_events ?? [];
   const totals = data.totals ?? {};
@@ -43,7 +45,7 @@ export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
       const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "The requested action failed.");
-      setNotice({ tone: "success", text: kind === "balance" ? "Token balance updated and recorded in the ledger." : "Usage report accepted by the email provider." });
+      setNotice({ tone: "success", text: kind === "balance" ? "Token balance updated and recorded in the ledger." : "Usage report accepted by the SMTP server." });
       if (kind === "balance") router.refresh();
     } catch (error) {
       setNotice({ tone: "error", text: error instanceof Error ? error.message : "The requested action failed." });
