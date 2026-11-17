@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { estimateNexoraCredits, estimateTextTokens, reserveNexoraUsage, completeNexoraUsage, refundNexoraUsage } from "@/lib/billing/nexora-tokens";
 import { createClient } from "@/lib/supabase/server";
 import {
   chatCompletion,
@@ -59,6 +60,21 @@ export async function POST(request: Request) {
       ? `DOCUMENT:\n${document}\n\nUSER REQUEST:\n${question}`
       : `DOCUMENT:\n${document}\n\nTASK: ${mode}${question ? `\nEXTRA: ${question}` : ""}`;
 
+  let usageId: string | undefined;
+  try {
+    const reservation = await reserveNexoraUsage(supabase, {
+      credits: estimateNexoraCredits("document", document.length, mode),
+      operation: "Document AI: " + mode,
+      provider: providerId,
+      model: provider.model,
+      inputTokens: estimateTextTokens(document + question),
+    });
+    usageId = reservation.usage_id;
+  } catch (e) {
+    const err = e as Error & { status?: number; balance?: number; required?: number };
+    return NextResponse.json({ error: err.message, balance: err.balance, required: err.required }, { status: err.status || 500 });
+  }
+
   try {
     const answer = await chatCompletion(
       provider,
@@ -68,6 +84,7 @@ export async function POST(request: Request) {
       ],
       { temperature: mode === "ask" ? 0.2 : 0.4 }
     );
+    if (usageId) await completeNexoraUsage(supabase, usageId, answer);
     return NextResponse.json({
       answer,
       provider: provider.id,
@@ -75,6 +92,7 @@ export async function POST(request: Request) {
       mode,
     });
   } catch (e) {
+    if (usageId) await refundNexoraUsage(supabase, usageId);
     const msg = e instanceof Error ? e.message : "AI request failed";
     return NextResponse.json({ error: msg }, { status: 502 });
   }
