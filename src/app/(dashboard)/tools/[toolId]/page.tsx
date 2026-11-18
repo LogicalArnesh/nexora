@@ -2,8 +2,6 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 
 const LABELS: Record<string, string> = {
-  "ai-pdf": "AI Documents",
-  weather: "Weather",
   projects: "Projects",
   resume: "Resume Builder",
   expenses: "Expenses",
